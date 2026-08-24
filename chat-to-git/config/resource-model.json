@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "philosophy": "resources are selected by capability, not conventional label",
+  "capabilities": {
+    "latency_ms": null,
+    "bandwidth_mbps": null,
+    "compute": {"scalar": null, "vector": null, "matrix": null, "parallel_workers": null},
+    "memory": {"capacity_bytes": null, "bandwidth_mbps": null, "latency_ns": null},
+    "persistence": null,
+    "locality": null,
+    "parallelism": null,
+    "estimated_cost": null,
+    "energy_cost": null,
+    "utilization": null
+  },
+  "adapters": ["github-hosted", "self-hosted-aurum", "future"]
+}
