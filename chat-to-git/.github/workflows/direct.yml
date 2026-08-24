@@ -1,0 +1,68 @@
+name: Chat-to-Git Direct
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      intent:
+        description: Natural-language intent
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  execute:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, '[make-it-so]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve request
+        id: request
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            echo "intent<<EOF" >> "$GITHUB_OUTPUT"
+            echo "${{ github.event.issue.body }}" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "request_id=issue-${{ github.event.issue.number }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "intent<<EOF" >> "$GITHUB_OUTPUT"
+            echo "${{ inputs.intent }}" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "request_id=dispatch-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Execute safe bootstrap proof
+        env:
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          HUMAN_INTENT: ${{ steps.request.outputs.intent }}
+          TRANSPORT: github-direct
+        run: python chat-to-git/scripts/runner.py
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-to-git-${{ steps.request.outputs.request_id }}
+          path: state/
+      - name: Return feedback to GPT-readable issue
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RESULT=$(cat state/current.json)
+          gh issue comment "${{ github.event.issue.number }}" --body "<!-- chat-to-git-result -->
+          **Chat-to-Git execution completed; external verification pending.**
+
+          Request: \`${{ steps.request.outputs.request_id }}\`
+          Transport: \`github-direct\`
+          Run: \`${{ github.run_id }}\`
+
+          \`\`\`json
+          $RESULT
+          \`\`\`"
